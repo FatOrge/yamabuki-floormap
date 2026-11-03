@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>新宿山吹校内フロアマップ・時間割App</title>
+    <style>
+        body {
+            background: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 380px;
+            box-sizing: border-box;
+        }
+        h2 { margin-top: 0; color: #1e293b; font-size: 22px; text-align: center; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 13px; font-weight: bold; color: #64748b; margin-bottom: 5px; }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+
+        .password-container {
+            position: relative;
+        }
+        #eyePasswordBtn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            width: auto;
+            margin: 0;
+            color: #475569;
+        }
+
+        #eyePasswordBtn:hover {
+            background: none; 
+            color: #1e293b;
+        }
+
+        button {
+            width: 100%;
+            padding: 11px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        button:hover { background: #4338ca; }
+        #status { font-size: 13px; text-align: center; margin-top: 15px; color: #475569; min-height: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <h2>🔐ログイン/新規登録</h2>
+        
+        <!-- Formタグで囲み、Enterキーによって自動送信（ログイン時のみ） -->
+        <form id="loginForm">
+            <div class="input-group">
+                <label>メールアドレス</label>
+                <input type="email" id="email" placeholder="name@example.com">
+                <!-- placeholder=...入力欄が空の時の見本文字 -->
+            </div>
+            
+            <div class="input-group">
+                <label>パスワード（6文字以上）</label>
+
+                <div class="password-container">
+                    <input type="password" id="password" placeholder="••••••••">
+                    <!-- type='password'...入力した文字が自動的に●●●に隠れる公式属性 -->
+                    <button type="button" id="eyePasswordBtn">👁</button>
+                </div>              
+            </div>
+
+            <button type="submit" id="loginBtn">進む</button>
+        </form>
+
+        <button id="logoutBtn">ログアウトする</button>
+
+        <p id="status"></p>
+        <p id="status2"></p>
+        <!-- id=loginBtn...ボタンが押された瞬間用フラグ -->
+        <!-- id=status...「ログイン成功！」・「エラー発生」などのメッセージ表示エリア用 -->
+    </div>
+
+
+    <!-- Firebase通信用 JavaScript -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-analytics.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+
+        // 1行目:Firebase起動,
+        // 2行目:アクセス解析,
+        // 3行目:ログイン/新規登録 認証関数
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDcvsEO5LZGL6LlRul6GW0jZA6qCNb80n8",
+            authDomain: "floormapapp-d63f3.fireba5seapp.com",
+            projectId: "floormapapp-d63f3",
+            storageBucket: "floormapapp-d63f3.firebasestorage.app",
+            messagingSenderId: "215863510996",
+            appId: "1:215863510996:web:09185c89e3428553d0b841",
+            measurementId: "G-2KHXSX00WW"
+        };
+
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app); 
+
+        // 1行目:firebaseConfigを読み込み、app変数に代入(プログラムとGoogleクラウドサーバを繋ぐ)
+        // 2行目:分析機能 起動
+        // 3行目:！認証機能(getAuth)を起動、auth変数に代入
+        // auth = getAuth(app);...app変数を用いて認証に関する機能を起動
+
+
+        const loginForm = document.getElementById("loginForm");
+        const logoutBtn = document.getElementById("logoutBtn");
+        const statusMsg = document.getElementById("status");
+        const statusMsg2 = document.getElementById("status2")
+        // id=loginForm,logoutBtn,status,status2がついた要素をJavaScriptのloginBtn変数に格納
+
+        const passwordInput = document.getElementById("password");
+        const eyePasswordBtn = document.getElementById("eyePasswordBtn");
+
+        eyePasswordBtn.addEventListener("click",() => {
+
+            if(passwordInput.type === "password"){
+                passwordInput.type = "text";
+            } else {
+                passwordInput.type = "password";
+                // type="password"のプロパティ（属性）のpasswordを指す。
+                // type="password"は入力した文字を自動的に隠す。
+            }
+
+        })
+
+
+        // .addEventListner('click',---)...ボタンがclickされたら直後の処理を実行
+        // async() => {---} ...非同期処理：｛｝内の処理を全て実行するまで出力しない
+        loginForm.addEventListener("submit", async (e) => {
+
+            e.preventDefault()
+            // submitイベントの発生源であるloginFormのデフォルト動作をキャンセルする
+            // デフォルト動作・・・画面を白く光らせ、リロードしながらデータをサーバに送信してページを切り替える
+
+            const email = document.getElementById("email").value;
+            const password = passwordInput.value;
+            // const...再代入・同名前での再宣言不可の変数を宣言する
+            // id=email,宣言したpasswordInputの要素から文字列.valueを回収し各々の変数に代入
+            // const password = document.getElementById("password").value; でも動く
+            
+            // !値...値がnull,0,''などのfalsyであるときに!値とするとtrueになる
+            // if （条件1||条件2）...条件のどちらか一方がtrueのとき処理が実行される
+            if (!email || !password) {
+                statusMsg.innerText = "⚠️メールアドレスとパスワードを入力してください";
+                return;
+            }
+
+            // statusMsg.innerText=...メッセージ表示エリアに警告文を書き込む
+            // element(例:statusMsg).innerText='新しい文字'...表示を書き換える。
+            // return;...処理を強制終了(この場合、空欄のため)
+
+            // 全て入力されていた場合
+            statusMsg.innerText = "認証中...";
+
+            try {
+        
+                await signInWithEmailAndPassword(auth, email, password);
+                statusMsg.innerText = "✅ログイン成功・メインページに移動・・・";
+
+                setTimeout(() => {
+                    window.location.href = "mainpage.html";
+                },1500);
+
+                // setTimeout(() => {処理},2000)...2秒後に処理を実行（アロー関数を用いる）
+                
+
+                // signInwithEmailAndPassword...importしたfirebase Authenticationのログイン専用の関数
+                // (auth,email,password)...関数に引き渡す引数
+
+                // authにはfirebaseConfigが格納されているため、
+                // authの機能とemail.passwordを用いてログインの通信を命じる。
+                
+
+            } catch (loginError) {
+                // ログインエラー時、新規アカウントを作成(続いているtryの実行)
+
+                try {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    statusMsg.innerText = "🌟新規登録・ログイン成功\nメインページに移動・・・";
+
+                    setTimeout(() => {
+                        window.location.href = "mainpage.html"
+                    },1500)
+
+
+                } catch (createError) {
+                    // 最終的にダメであった場合（passwordが短い、emailの形が間違っているなど）
+                    let errorMessage = "エラーが発生しました";
+
+                    if(createError.code === "auth/weak-password"){
+                        errorMessage = "パスワードは6文字以上で入力してください";
+                    } else if(createError.code === "auth/invalid-email"){
+                        errorMessage = "メールアドレスの形式が正しくありません";
+                    } else if(createError.code === "auth/email-already-in-use"){
+                        errorMessage = "このメールアドレスは既に使われています。またはパスワードが正しくない可能性があります。";
+                    } else{
+                        errorMessage = createError.message;
+                    }
+
+                    statusMsg.innerText = "❌エラー: " + createError.message;
+                    // createError...Googleサーバから返ってきたエラーオブジェクトが格納されている
+                    // createError.message...エラー理由を取り出すことができる
+                    // 例: Password should be at least 6 characters...など
+                }
+
+                // try...catchについて: try内でErrorが発生したら
+                // 自動的に下のcatchにエラーデータを格納する仕組み
+            }
+        });
+
+        logoutBtn.addEventListener("click", async() =>{
+            try{
+
+                await signOut(auth);
+
+                statusMsg.innerText = "ログアウトしました";
+                console.log("ログアウト成功")
+
+            } catch(error){
+                statusMsg.innerText = "❌ログアウトエラー:" +error.message;
+            }
+        });
+
+        // アロー関数: (引数) => {処理}
+
+        // onAuthStateChanged(auth,(user) => {...})について
+        // 第1引数にauthを渡し、第2引数に状態が変わったときの処理をセット
+        // ログイン中であれば、(user)内にuidなどのデ自動格納動格納
+
+        // ログイン状態を監視
+        onAuthStateChanged(auth, (user) => {
+
+            // 場合:ログインしている時
+            if (user) {
+
+                console.log("ログイン中のユーザーUID:", user.uid);
+                statusMsg.innerText = `✨ログイン状態 (${user.email})`;
+                statusMsg2.innerText = `🔑UID: ${user.uid}`;
+                // 変数を文章中に埋め込むため、バッククォートを使用（`）
+    
+
+                // ここに時間割登録画面へ切り替える処理を追加予定
+
+            } else {
+                console.log("ログアウト状態");
+                statusMsg.innerText = "🔒ログアウト状態です";
+                
+                statusMsg2.innerText = "";
+            }
+        });
+    </script>
+</body>
+</html>

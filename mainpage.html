@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+       <meta charset="utf-8">
+        <title>メインページ-新宿山吹校内フロアマップ</title>
+        <style>
+            .maincontainer{
+                font-weight:bold;
+
+            }
+        </style>
+    </head>
+    <body>
+        <div class="maincontainer">
+            <header>
+                <div class="user-info">
+                    <p id="userEmail">アカウント情報を読み込み中・・・</p>
+                    <p class="uid" id="userUid"></p>
+                </div>
+                <div>
+                    <a href="timetable.html" class="nav-btn">📅時間割登録・編集</a>
+                    <br>
+                    <a href="login.demo.html" class="nav-btn">🌟ログイン/ログアウト画面</a>
+                </div>
+            </header>
+
+            <main class="map-section">
+                <h2>未作成：校内フロアマップ（メイン画面）</h2>
+                <p>ここに作成したフロアマップを表示する予定</p>
+            </main>
+        </div>
+
+        <!-- Firebase通信用 JavaScript -->
+        <script type="module">
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+            import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+
+            // 1行目:Firebase起動,
+            // 2行目:ログイン/新規登録 認証関数
+
+            const firebaseConfig = {
+                apiKey: "AIzaSyDcvsEO5LZGL6LlRul6GW0jZA6qCNb80n8",
+                authDomain: "floormapapp-d63f3.firebaseapp.com",
+                projectId: "floormapapp-d63f3",
+                storageBucket: "floormapapp-d63f3.firebasestorage.app",
+                messagingSenderId: "215863510996",
+                appId: "1:215863510996:web:09185c89e3428553d0b841",
+                measurementId: "G-2KHXSX00WW"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+
+            const userEmailElem = document.getElementById("userEmail");
+            const userUidElem = document.getElementById("userUid");
+
+            // html中のid="userEmail"を持つ要素をJavaScript内で扱うため、変数userEmailElemと宣言
+
+            // onAuthStateChanged(auth,(user) =>{...})
+            // auth...const auth = getAuth(app);のauth
+            // (user)...Firebaseが自動的にuser（箱）にEmail・Uid等のデータを入れてくれる（ログイン中）
+
+            onAuthStateChanged(auth,(user) => {
+                if(user){
+                    // ログインしている場合
+                    userEmailElem.innerText = `👤ログイン中: ${user.email} `;
+                    userUidElem.innerText = `UID: ${user.uid}`;
+
+                    // user.email(またはuid)...Firebaseが保存したユーザのemail(uid)を取り出すプロパティ
+                    
+                } else{
+
+                    alert("アカウントのログインが必要です。");
+                    window.location.href ="login.demo.html";
+                }
+            });
+        </script>
+    </body>
+</html>
